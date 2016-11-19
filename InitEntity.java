@@ -286,6 +286,7 @@ class Table {
             builder.append(author);
             builder.append(" on ");
             builder.append(InitEntity.time);
+            builder.append(".");
             builder.append("\n */\n");
         }
 
