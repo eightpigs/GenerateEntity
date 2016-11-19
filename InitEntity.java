@@ -39,17 +39,17 @@ public class InitEntity {
     /**
      * 源代码路径
      */
-    private static String classFilePath = System.getProperty("user.dir") + "/src/main/java/";
+    public static String classFilePath = System.getProperty("user.dir") + "/src/main/java/";
 
     /**
      * 包名
      */
-    private static String packageName = "";
+    private static String packageName = "me.eightpigs.test";
 
     /**
      * 表前缀(生成过程中会将此字符串删除 , 没有请填为空字符串)
      */
-    private static String tablePrefix = "jm";
+    private static String tablePrefix = "";
 
     /**
      * 类注释上的创建用户
@@ -65,6 +65,14 @@ public class InitEntity {
      * 是否生成一个无參+一个全參构造
      */
     public static Boolean genConstructor = true;
+
+    /**
+     * 将含有一下关键字的表归类到一个包中
+     */
+    public static List<String> packageGroups = new ArrayList<String>(){{
+        add("product");
+        add("user");
+    }};
 
 
     /**
@@ -92,7 +100,7 @@ public class InitEntity {
             // 设置用户
             table.setAuthor(tableAuthor);
             // 创建类文件
-            table.createObj(classFilePath + packageName.replace(".","/"));
+            table.createObj();
         }
         conn.close();
     }
@@ -227,6 +235,11 @@ class Table {
 
     public void setPackageName(String packageName) {
         this.packageName = packageName;
+        // 判断是否需要归类
+        for (String pg : InitEntity.packageGroups) {
+            if(name.indexOf(pg) != -1 && className.toLowerCase().indexOf(pg) != -1 && className.toLowerCase().indexOf(pg) == 0)
+                this.packageName += ("."+pg);
+        }
     }
 
     public List<String> getImports() {
@@ -240,7 +253,7 @@ class Table {
     /**
      * 创建类文件(name.java)
      */
-    public void createObj(String path){
+    public void createObj(){
 
         StringBuilder builder = new StringBuilder();
         // 生成包名
@@ -358,7 +371,7 @@ class Table {
         }
 
         builder.append("\n}");
-        String filePath = path+"/" + className +".java";
+        String filePath = InitEntity.classFilePath + (packageName.replace(".","/")) + "/" + className +".java";
         // 创建类
         FileUtils.writeFile(builder.toString() , filePath);
 
@@ -545,6 +558,13 @@ class FileUtils {
      */
     public static void writeFile(String content , String path){
         try {
+            // 目录
+            String dirPath = path.substring(0,path.lastIndexOf("/"));
+            File dir = new File(dirPath);
+            if(!dir.exists())
+                dir.mkdirs();
+
+            // 文件
             File file = new File(path);
             if(file.exists())
                 file.delete();
