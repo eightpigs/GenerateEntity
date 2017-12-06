@@ -1,5 +1,3 @@
-package com.joemsen.manager;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
