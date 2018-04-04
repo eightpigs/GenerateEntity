@@ -10,14 +10,26 @@ import java.util.Date;
 /**
  * 创建相关实体类
  * Created by eightpigs on 2016/11/19.
+ * Updated on 2018/04/04.
+ *
+ *
+ * 使用说明：
+ *  1. 请主要查看静态变量的配置项
+ *  2. 根据配置项说明进行配置
+ *  3. 配置完成运行类并查看效果
  */
 public class InitEntity {
+
+    /**
+     * 数据库名
+     */
+    private static String dbName = "dbName";
 
     /**
      * 连接字符串
      * 其中 useInformationSchema=true 参数必须加,不然获取不到表的注释
      */
-    private static String connStr = "jdbc:mysql://host:port/databaseName?useInformationSchema=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&autoReconnect=true&zeroDateTimeBehavior=convertToNull";
+    private static String connStr = "jdbc:mysql://host:port/"+ dbName +"?useInformationSchema=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&autoReconnect=true";
 
     /**
      * 连接对象
@@ -42,7 +54,7 @@ public class InitEntity {
     /**
      * 包名
      */
-    private static String packageName = "me.eightpigs.test";
+    private static String packageName = "me.lyinlong.dao.entity";
 
     /**
      * 表前缀(生成过程中会将此字符串删除 , 没有请填为空字符串)
@@ -65,19 +77,21 @@ public class InitEntity {
     public static Boolean genConstructor = true;
 
     /**
-     * 将含有一下关键字的表归类到一个包中
+     * 将含有以下关键字的表归类到一个包中
      */
     public static List<String> packageGroups = new ArrayList<String>(){{
         add("product");
-        add("user");
+        add("account");
+        add("order");
     }};
 
-
     /**
-     * @param args
-     * @throws ClassNotFoundException
-     * @throws SQLException
+     * 属性名称是否转换为驼峰命名(如果有下划线的话）
      */
+    public static Boolean CamelNamed = true;
+
+
+
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
         // 加载数据库驱动
         Class.forName("com.mysql.jdbc.Driver");
@@ -105,29 +119,29 @@ public class InitEntity {
 
     /**获取数据库中所有表
      * @return  所有表及字段
-     * @throws SQLException
+     * @throws SQLException sql执行异常
      */
     private static ArrayList<Table> getTables() throws SQLException {
         // 获取数据库的综合信息
         DatabaseMetaData databaseMetaData = conn.getMetaData();
         // 获取所有的表
-        ResultSet rs_t = databaseMetaData.getTables(null, null, "%", null);
+        ResultSet rsT = databaseMetaData.getTables(dbName, null, "%", null);
 
         ArrayList<Table> tables = new ArrayList<>();
 
-        while (rs_t.next()) {
+        while (rsT.next()) {
 
             // 表对象
-            Table table = new Table(rs_t.getString("TABLE_NAME") , new LinkedHashSet<>(), rs_t.getString("REMARKS") );
+            Table table = new Table(rsT.getString("TABLE_NAME") , new LinkedHashSet<>(), rsT.getString("REMARKS") );
 
             // 表的所有列
-            ResultSet rs_c = databaseMetaData.getColumns(null, "%", table.getName() , "%");
+            ResultSet rsC = databaseMetaData.getColumns(dbName, "%", table.getName() , "%");
 
             // 初始化导包集合
             table.setImports(new ArrayList<>());
 
-            while(rs_c.next()){
-                Column column = new Column(rs_c.getString("COLUMN_NAME") , rs_c.getString("TYPE_NAME") , null ,rs_c.getString("REMARKS"));
+            while(rsC.next()){
+                Column column = new Column(rsC.getString("COLUMN_NAME") , rsC.getString("TYPE_NAME") , null ,rsC.getString("REMARKS"));
                 // 将数据库的类型转换为java对象类型并且返回需要导入的包名
                 table.getImports().addAll(column.transferType());
                 table.getColumns().add(column);
@@ -176,13 +190,13 @@ class Table {
 
     public Table() { }
 
-    public Table(String name, Set<Column> columns, String remark) {
+    Table(String name, Set<Column> columns, String remark) {
         this.name = name;
         this.columns = columns;
         this.remark = remark;
     }
 
-    public String getName() {
+    String getName() {
         return name;
     }
 
@@ -190,7 +204,7 @@ class Table {
         this.name = name;
     }
 
-    public Set<Column> getColumns() {
+    Set<Column> getColumns() {
         return columns;
     }
 
@@ -198,7 +212,7 @@ class Table {
         this.columns = columns;
     }
 
-    public String getRemark() {
+    String getRemark() {
         return remark;
     }
 
@@ -206,7 +220,7 @@ class Table {
         this.remark = remark;
     }
 
-    public String getClassName() {
+    String getClassName() {
         return className;
     }
 
@@ -214,11 +228,11 @@ class Table {
         return author;
     }
 
-    public void setAuthor(String author) {
+    void setAuthor(String author) {
         this.author = author;
     }
 
-    public void setClassName(String className , String prefix) {
+    void setClassName(String className, String prefix) {
         className = className == null ? name : className;
         this.className = TextUtils.getFirstUpperName(TextUtils.delUnderlined(className.replace(prefix,"")));
     }
@@ -227,31 +241,32 @@ class Table {
         this.className = className;
     }
 
-    public String getPackageName() {
+    String getPackageName() {
         return packageName;
     }
 
-    public void setPackageName(String packageName) {
+    void setPackageName(String packageName) {
         this.packageName = packageName;
         // 判断是否需要归类
         for (String pg : InitEntity.packageGroups) {
-            if(name.indexOf(pg) != -1 && className.toLowerCase().indexOf(pg) != -1 && className.toLowerCase().indexOf(pg) == 0)
+            if(name.contains(pg) && className.toLowerCase().contains(pg) && className.toLowerCase().indexOf(pg) == 0){
                 this.packageName += ("."+pg);
+            }
         }
     }
 
-    public List<String> getImports() {
+    List<String> getImports() {
         return imports;
     }
 
-    public void setImports(List<String> imports) {
+    void setImports(List<String> imports) {
         this.imports = imports;
     }
 
     /**
      * 创建类文件(name.java)
      */
-    public void createObj(){
+    void createObj(){
 
         StringBuilder builder = new StringBuilder();
         // 生成包名
@@ -291,9 +306,11 @@ class Table {
         builder.append("public class ");
         builder.append(className);
         builder.append(" {\n\n");
+
         // 生成属性
         for (Column column : columns) {
             column.setAttrName(null);
+
             // 如果有注释,生成注释片段
             if(column.getRemark() != null && column.getRemark().length() > 0){
                 builder.append("\t/**\n");
@@ -304,7 +321,7 @@ class Table {
             builder.append("\tprivate ");
             builder.append(column.getTypeClassName());
             builder.append(" ");
-            builder.append(column.getAttrName());
+            builder.append(getAttrName(column.getAttrName()));
             builder.append(";\n\n");
         }
 
@@ -321,18 +338,19 @@ class Table {
             builder.append("(");
             int i = 0 ;
             for (Column column : columns) {
-                if(i++ > 0)
+                if (i++ > 0) {
                     builder.append(",");
+                }
                 builder.append(column.getTypeClassName());
                 builder.append(" ");
-                builder.append(column.getAttrName());
+                builder.append(getAttrName(column.getAttrName()));
             }
             builder.append(") {\n");
             for (Column column : columns) {
                 builder.append("\t\tthis.");
-                builder.append(column.getAttrName());
+                builder.append(getAttrName(column.getAttrName()));
                 builder.append(" = ");
-                builder.append(column.getAttrName());
+                builder.append(getAttrName(column.getAttrName()));
                 builder.append(";\n");
             }
             builder.append("\t}\n");
@@ -344,28 +362,28 @@ class Table {
             builder.append("\n\tpublic ");
             builder.append(column.getTypeClassName());
             builder.append(" get");
-            builder.append(TextUtils.getFirstUpperName(column.getName()));
+            builder.append(TextUtils.getFirstUpperName(getAttrName(column.getName())));
             builder.append("() {\n");
             builder.append("\t\treturn ");
-            builder.append(column.getAttrName());
+            builder.append(getAttrName(column.getAttrName()));
             builder.append(";\n\t}\n");
 
             // ------------------------------------------
 
             // 生成setter
             builder.append("\n\tpublic void set");
-            builder.append(TextUtils.getFirstUpperName(column.getName()));
+            builder.append(TextUtils.getFirstUpperName(getAttrName(column.getName())));
             // 方法参数
             builder.append("(");
             builder.append(column.getTypeClassName());
             builder.append(" ");
-            builder.append(column.getAttrName());
+            builder.append(getAttrName(column.getAttrName()));
             builder.append(") ");
             builder.append("{\n");
             builder.append("\t\tthis.");
-            builder.append(column.getAttrName());
+            builder.append(getAttrName(column.getAttrName()));
             builder.append(" = ");
-            builder.append(column.getAttrName());
+            builder.append(getAttrName(column.getAttrName()));
             builder.append(";\n\t}\n");
         }
 
@@ -374,6 +392,25 @@ class Table {
         // 创建类
         FileUtils.writeFile(builder.toString() , filePath);
 
+    }
+
+    /**
+     * 根据配置获取是否转换为驼峰命名的属性名
+     * @param name  字段名
+     * @return  属性名
+     */
+    private String getAttrName(String name){
+        StringBuilder nameBuilder;
+        if(InitEntity.CamelNamed && name.contains("_")){
+                nameBuilder = new StringBuilder();
+                String[] names = name.split("_");
+                nameBuilder.append(names[0]);
+                for (int i = 1; i < names.length; i++) {
+                   nameBuilder.append(String.valueOf(names[i].charAt(0)).toUpperCase() + names[i].substring(1));
+                }
+                return nameBuilder.toString();
+            }
+            return name;
     }
 }
 
@@ -407,61 +444,78 @@ class Column{
      * 将数据库中常用的数据类型转换为java 全限定名
      * @return 返回需要导的包
      */
-    public List<String> transferType(){
+    List<String> transferType(){
 
         // 删除不需要的类型字符串
-        String temp_typeName = databaseType.replace("UNSIGNED","");
+        String tempTypename = databaseType.replace("UNSIGNED","");
 
         // 需要导的包
         List<String> imports = new ArrayList<>();
 
-        if( temp_typeName.equals("CHAR") || temp_typeName.equals("VARCHAR") || temp_typeName.equals("LONGVARCHAR"))
-            typeClassName = "String";
-        else if(temp_typeName.equals("NUMERIC") || temp_typeName.equals("DECIMAL")){
-            typeClassName = "BigDecimal";
-            // 添加包
-            imports.add("java.math.BigDecimal");
+        switch (tempTypename) {
+            case "CHAR":
+            case "VARCHAR":
+            case "LONGVARCHAR":
+                typeClassName = "String";
+                break;
+            case "NUMERIC":
+            case "DECIMAL":
+                typeClassName = "BigDecimal";
+                // 添加包
+                imports.add("java.math.BigDecimal");
+                break;
+            case "INT":
+            case "INT UNSIGNED":
+            case "TINYINT":
+            case "SMALLINT":
+            case "INTEGER":
+                typeClassName = "Integer";
+                break;
+            case "BIT":
+                typeClassName = "Boolean";
+                break;
+            case "BIGINT":
+                typeClassName = "Long";
+                break;
+            case "REAL":
+                typeClassName = "Float";
+                break;
+            case "FLOAT":
+            case "DOUBLE":
+                typeClassName = "Double";
+                break;
+            case "BINARY":
+            case "VARBINARY":
+            case "LONGVARBINARY":
+                typeClassName = "byte[]";
+                break;
+            case "DATE":
+            case "DATETIME":
+            case "TIME":
+                typeClassName = "Date";
+                imports.add("java.util.Date");
+                break;
+            case "TIMESTAMP":
+                typeClassName = "Timestamp";
+                imports.add("java.sql.Timestamp");
+                break;
+            default:
+                typeClassName = "String";
+                break;
         }
-        else if(temp_typeName.equals("BIT"))
-            typeClassName = "Boolean";
-        else if(temp_typeName.equals("INT") || temp_typeName.equals("INT UNSIGNED") || temp_typeName.equals("TINYINT") || temp_typeName.equals("SMALLINT") || temp_typeName.equals("INTEGER"))
-            typeClassName = "Integer";
-        else if(temp_typeName.equals("BIGINT"))
-            typeClassName = "Long";
-        else if(temp_typeName.equals("REAL"))
-            typeClassName = "Float";
-        else if(temp_typeName.equals("FLOAT") || temp_typeName.equals("DOUBLE"))
-            typeClassName = "Double";
-        else if(temp_typeName.equals("DATE") || temp_typeName.equals("DATE") || temp_typeName.equals("DATE"))
-            typeClassName = "String";
-        else if(temp_typeName.equals("BINARY") || temp_typeName.equals("VARBINARY") || temp_typeName.equals("LONGVARBINARY"))
-            typeClassName = "byte[]";
-        else if(temp_typeName.equals("DATE") || temp_typeName.equals("TIME")){
-            typeClassName = "Date";
-            imports.add("java.util.Date");
-        }
-        else if(temp_typeName.equals("TIMESTAMP")){
-            typeClassName = "Timestamp";
-            imports.add("java.sql.Timestamp");
-        }
-        else
-            typeClassName = "String";
-
         return imports;
-
-
     }
 
     public Column() { }
 
-    public Column(String name, String databaseType, String typeClassName, String remark) {
+    Column(String name, String databaseType, String typeClassName, String remark) {
         this.name = name;
         this.databaseType = databaseType;
         this.typeClassName = typeClassName;
         this.remark = remark;
     }
 
-    public String getName() {
+    String getName() {
         return name;
     }
 
@@ -477,7 +531,7 @@ class Column{
         this.databaseType = databaseType;
     }
 
-    public String getTypeClassName() {
+    String getTypeClassName() {
         return typeClassName;
     }
 
@@ -485,7 +539,7 @@ class Column{
         this.typeClassName = typeClassName;
     }
 
-    public String getRemark() {
+    String getRemark() {
         return remark;
     }
 
@@ -493,7 +547,7 @@ class Column{
         this.remark = remark;
     }
 
-    public String getAttrName() {
+    String getAttrName() {
         return attrName;
     }
 
@@ -501,10 +555,19 @@ class Column{
      * 将name值进行转换为正常的属性名
      * @param attrName
      */
-    public void setAttrName(String attrName) {
+    void setAttrName(String attrName) {
         this.attrName = TextUtils.delUnderlined(name);
     }
 
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
+    }
 }
 
 /**
@@ -517,10 +580,8 @@ class TextUtils{
      * @param name
      * @return
      */
-    public static String getFirstUpperName(String name){
-        StringBuilder builder = new StringBuilder(name.substring(0,1).toUpperCase());
-        builder.append(name.substring(1));
-        return builder.toString();
+    static String getFirstUpperName(String name){
+        return name.substring(0, 1).toUpperCase() + name.substring(1);
     }
 
     /**
@@ -528,21 +589,21 @@ class TextUtils{
      * @param text
      * @return
      */
-    public static String delUnderlined(String text){
+    static String delUnderlined(String text){
         // 所有下划线
-        char[] val_chars = text.toCharArray();
+        char[] valChars = text.toCharArray();
         // 将所有下划线的下标保存
-        for (int i = 0; i < val_chars.length; i++) {
-            if(val_chars[i] == '_'){
+        for (int i = 0; i < valChars.length; i++) {
+            if(valChars[i] == '_'){
                 // 如果下划线在第一个或者最后一个
-                if(i == 0 || i == val_chars.length - 1)
-                    val_chars[i] = ' ';
-                else{ // 将_后面的字符转为大写
-                    val_chars[i+1] = String.valueOf(val_chars[i+1]).toUpperCase().toCharArray()[0];
+                if(i == 0 || i == valChars.length - 1) {
+                    valChars[i] = ' ';
+                } else { // 将_后面的字符转为大写
+                    valChars[i+1] = String.valueOf(valChars[i+1]).toUpperCase().toCharArray()[0];
                 }
             }
         }
-        return String.valueOf(val_chars).trim().replace("_","");
+        return String.valueOf(valChars).trim().replace("_","");
     }
 }
 
@@ -555,18 +616,19 @@ class FileUtils {
      * @param content   要写入的内容
      * @param path      路径
      */
-    public static void writeFile(String content , String path){
+    static void writeFile(String content, String path){
         try {
             // 目录
             String dirPath = path.substring(0,path.lastIndexOf("/"));
             File dir = new File(dirPath);
-            if(!dir.exists())
+            if(!dir.exists()){
                 dir.mkdirs();
-
+            }
             // 文件
             File file = new File(path);
-            if(file.exists())
+            if(file.exists()){
                 file.delete();
+            }
             file.createNewFile();
             BufferedWriter out = new BufferedWriter(new FileWriter(file));
             out.write(content);
